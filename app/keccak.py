@@ -117,33 +117,24 @@ class Keccak:
 
     def _theta(self):
         print("_theta begin")
-        #dump_buffer(self.state.buffer)
-        c1 = B()
-        for x in range(5):
-            for y in range(5):
-                for z in range(8):
-                    ri = x * 8 + y * 40 + z
-                    ci = z + x * 8
-                    c1.bite[ci] ^= self.state.buffer[ri]
+        tmp1 = B()
 
-        c2 = B()
-        c2.bite = copy.deepcopy(c1.bite)
+        for i in range(25):
+            tmp1.register[i % 5] ^= self.state.register[i]
+
+        tmp2 = B()
+        tmp2.bite = copy.deepcopy(tmp1.bite)
         for x in range(5):
-            rolln_reg_left(c2.register, x, 1)
+            rolln_reg_left(tmp2.register, x, 1)
 
         d = B()
-        for x in range(5):
-            x1 = (x + 4) % 5
-            x2 = (x + 1) % 5
-            for z in range(8):
-                d.bite[x * 8 + z] = c1.bite[x1 * 8 + z] ^ c2.bite[x2 * 8 + z]
+        for i in range(5):
+            x1 = (i + 4) % 5
+            x2 = (i + 1) % 5
+            d.register[i] = tmp1.register[x1] ^ tmp2.register[x2]
 
-        for x in range(5):
-            for y in range(5):
-                for z in range(8):
-                    si = x * 8 + y * 40 + z
-                    di = z + x * 8
-                    self.state.buffer[si] ^= d.bite[di]
+        for i in range(25):
+            self.state.register[i] ^= d.register[i%5]
 
 
         dump_buffer(self.state.buffer)
