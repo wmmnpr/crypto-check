@@ -1,6 +1,7 @@
 import copy
 import ctypes
 import io
+from math import floor
 
 rot = [
     [0, 36, 3, 41, 18],
@@ -63,15 +64,17 @@ def dump_array(b: bytearray, n):
 
 
 def dump_buffer(b: bytearray):
-    for y in range(5):
-        for x in range(5):
-            i = x * 8 + y * 40
-            print(f"({x},{y}):", end="")
-            for z in range(8):
-                zi = i + z
-                v = b[zi]
-                print(f"{v:02x}|", end="")
-            print("")
+    for i in range(len(b)):
+        x = floor((i / 8) % 5)
+        y = floor((i / 40) % 5)
+        if i != 0 and i % 8 == 0: print("")
+
+        if i % 8 == 0 : print(f"({x},{y}):", end="")
+        v = b[i]
+        print(f"{v:02x}|", end="")
+
+    print("")
+
 
 
 class StateUnion(ctypes.Union):
@@ -169,16 +172,19 @@ class Keccak:
     def _chi(self):
         print("_chi begin")
         a = self.state.buffer
-        b = self.b.buffer
-        for y in range(5):
-            for x in range(5):
-                a_i = x * 8 + y * 40
-                b_i = a_i
-                b2_i = (x + 1) % 5 * 8 + (y * 40)
-                b3_i = (x + 2) % 5 * 8 + (y * 40)
-                chi_operation(a, a_i, b, b_i, b2_i, b3_i)
+        B = self.b
+        for x in range(5):
+            for y in range(5):
+                x1 = (x + 1) % 5
+                x2 = (x + 2) % 5
+                bi = x * 5 + y
+                b1 = x1 * 5 + y
+                b2 = x2 * 5 + y
+                tmp = self.b.register[bi] ^ (~B.register[b1] & B.register[b2])
+                self.state.register[bi] = tmp
 
-        dump_buffer(a)
+
+        dump_buffer(self.state.buffer)
         print("_chi end")
     def _iota(self, rnd):
         a = self.state.buffer
@@ -199,6 +205,8 @@ class Keccak:
             self.state.buffer[i] ^= buffer[i]
 
     def _absorb(self):
+        print("beginning rounds with")
+        dump_buffer(self.state.buffer)
         self._rounds()
 
     def hash(self, input: io.BytesIO, in_len, security=256):
