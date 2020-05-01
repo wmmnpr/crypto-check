@@ -179,16 +179,17 @@ class Keccak:
         print("_chi end")
     def _iota(self, rnd):
         print("_iota start")
-        a = self.state.buffer
+        a = self.state.register
+        print(f"---------------{rc_24[rnd]:02x}|")
         a[0] = a[0] ^ rc_24[rnd]
 
+        dump_buffer(self.state.buffer)
         print("_iota end")
 
     def _rounds(self):
         for x in range(24):
             print(f"*********  round({x}) ****************")
             self._theta()
-            dump_buffer(self.state.buffer)
             self._rho_pi()
             self._chi()
             self._iota(x)
