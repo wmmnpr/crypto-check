@@ -104,6 +104,7 @@ class Keccak:
         for i in range(25):
             self.state.register[i] ^= tmp3.register[i%5]
 
+
     def _rho_pi(self):
         for x in range(200): self.aux_state.buffer[x] = 0x0
         for x in range(5):
@@ -159,4 +160,4 @@ class Keccak:
         self.state.buffer[self.RATE - 1] ^= 0x80
         self._absorb()
 
-        return self.state.buffer[: int(security / 8)]
+        return "".join(map(lambda x: f"{x:02x}", self.state.buffer[: int(security / 8)]))
