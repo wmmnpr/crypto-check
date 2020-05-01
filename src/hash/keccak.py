@@ -94,14 +94,6 @@ class State(ctypes.Union):
     _fields_ = [("buffer", ctypes.c_ubyte * 200),
                 ("register", ctypes.c_ulonglong * 25)]
 
-def rol(self, reg_id):
-    roll_reg_left(self.buffer, reg_id * 8)
-
-
-def roln(self, reg_id, times):
-    for x in range(times):
-        self.rol(reg_id)
-
 class B(ctypes.Union):
     _fields_ = [("bite", ctypes.c_ubyte * 40),
                 ("register", ctypes.c_ulonglong * 5)]
