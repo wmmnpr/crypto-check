@@ -2,9 +2,7 @@ import io
 import unittest
 from ctypes import *
 
-
-from src.hash.keccak import Keccak, StateUnion
-
+from hash.keccak import Keccak, StateUnion
 
 class TestKeccak(unittest.TestCase):
 
