@@ -116,7 +116,6 @@ class Keccak:
     b = State()
 
     def _theta(self):
-        print("_theta begin")
         tmp1 = B()
 
         for i in range(25):
@@ -136,12 +135,7 @@ class Keccak:
         for i in range(25):
             self.state.register[i] ^= d.register[i%5]
 
-
-        dump_buffer(self.state.buffer)
-        print("_theta end")
     def _rho_pi(self):
-        print("_rho_pi begin")
-
         b = self.b
         for x in range(200): b.buffer[x] = 0x0
 
@@ -157,11 +151,8 @@ class Keccak:
 
                 rolln_reg_left(b.register, b_i, rv)
 
-        dump_buffer(b.buffer)
-        print("_rho_pi end")
 
     def _chi(self):
-        print("_chi begin")
         a = self.state.buffer
         B = self.b
         for x in range(5):
@@ -174,21 +165,12 @@ class Keccak:
                 tmp = self.b.register[bi] ^ (~B.register[b1] & B.register[b2])
                 self.state.register[x + y * 5] = tmp
 
-
-        dump_buffer(self.state.buffer)
-        print("_chi end")
     def _iota(self, rnd):
-        print("_iota start")
         a = self.state.register
-        print(f"---------------{rc_24[rnd]:02x}|")
         a[0] = a[0] ^ rc_24[rnd]
-
-        dump_buffer(self.state.buffer)
-        print("_iota end")
 
     def _rounds(self):
         for x in range(24):
-            print(f"*********  round({x}) ****************")
             self._theta()
             self._rho_pi()
             self._chi()
@@ -199,8 +181,6 @@ class Keccak:
             self.state.buffer[i] ^= buffer[i]
 
     def _absorb(self):
-        print("beginning rounds with")
-        dump_buffer(self.state.buffer)
         self._rounds()
 
     def hash(self, input: io.BytesIO, in_len, security=256):
@@ -216,9 +196,4 @@ class Keccak:
         self.state.buffer[self.RATE - 1] ^= 0x80
         self._absorb()
 
-        dump_buffer(self.state.buffer)
-        for i in range(32):
-            v = self.state.buffer[i]
-            print(f"{v:02x}|", end="")
-        print("")
         return self.state.buffer[: int(security / 8)]
