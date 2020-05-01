@@ -47,12 +47,6 @@ def rolln_reg_left(arr, beg, nbits):
     for n in range(nbits):
         roll_reg_left(arr, beg)
 
-
-def chi_operation(dst, ai, b, r1, r2, r3):
-    for i in range(8):
-        dst[ai + i] = b[r1 + i] ^ (~b[r2 + i] & b[r3 + i])
-
-
 def dump_array(b: bytearray, n):
     for z in range(n):
         if z != 0 and z % 8 == 0:
@@ -75,78 +69,55 @@ def dump_buffer(b: bytearray):
 
     print("")
 
-
-
-class StateUnion(ctypes.Union):
-    _fields_ = [("buffer", ctypes.c_ubyte * 200),
-                ("register", ctypes.c_ulonglong * 25)]
-
-    def check_shift(self):
-        self.buffer[0] = 0x01;
-
-        for x in range(65):
-            self.register[0] = ((self.register[0] << 1) | (self.register[0] >> 63))
-            dump_buffer(self.buffer)
-            print("--------")
-
-
 class State(ctypes.Union):
     _fields_ = [("buffer", ctypes.c_ubyte * 200),
                 ("register", ctypes.c_ulonglong * 25)]
 
-class B(ctypes.Union):
+class Plane(ctypes.Union):
     _fields_ = [("bite", ctypes.c_ubyte * 40),
                 ("register", ctypes.c_ulonglong * 5)]
 
 
 class Keccak:
-    # 25 * 64 = 25 * 8 * 8 = 200 * 8 = 1600
-    # 64 * 5 = 8 * 8 * 5 = 8 * 40 = 320
+
     RATE = 136
     STATE_SIZE = 200
     state = State()
-    b = State()
+    aux_state = State()
 
     def _theta(self):
-        tmp1 = B()
-
+        tmp1 = Plane()
         for i in range(25):
             tmp1.register[i % 5] ^= self.state.register[i]
 
-        tmp2 = B()
+        tmp2 = Plane()
         tmp2.bite = copy.deepcopy(tmp1.bite)
         for x in range(5):
             rolln_reg_left(tmp2.register, x, 1)
 
-        d = B()
+        tmp3 = Plane()
         for i in range(5):
             x1 = (i + 4) % 5
             x2 = (i + 1) % 5
-            d.register[i] = tmp1.register[x1] ^ tmp2.register[x2]
+            tmp3.register[i] = tmp1.register[x1] ^ tmp2.register[x2]
 
         for i in range(25):
-            self.state.register[i] ^= d.register[i%5]
+            self.state.register[i] ^= tmp3.register[i%5]
 
     def _rho_pi(self):
-        b = self.b
-        for x in range(200): b.buffer[x] = 0x0
-
+        for x in range(200): self.aux_state.buffer[x] = 0x0
         for x in range(5):
             for y in range(5):
                 bx = y
                 by = (2 * x + 3 * y) % 5
                 rv = rot[x][y]
-                #print(f"({x},{y})=>({bx},{by}) : {rv}")
                 b_i = by + bx * 5
                 i = x + y * 5
-                b.register[b_i] = self.state.register[i]
+                self.aux_state.register[b_i] = self.state.register[i]
 
-                rolln_reg_left(b.register, b_i, rv)
-
+                rolln_reg_left(self.aux_state.register, b_i, rv)
 
     def _chi(self):
-        a = self.state.buffer
-        B = self.b
         for x in range(5):
             for y in range(5):
                 x1 = (x + 1) % 5
@@ -154,12 +125,11 @@ class Keccak:
                 bi = x * 5 + y
                 b1 = x1 * 5 + y
                 b2 = x2 * 5 + y
-                tmp = self.b.register[bi] ^ (~B.register[b1] & B.register[b2])
+                tmp = self.aux_state.register[bi] ^ (~self.aux_state.register[b1] & self.aux_state.register[b2])
                 self.state.register[x + y * 5] = tmp
 
     def _iota(self, rnd):
-        a = self.state.register
-        a[0] = a[0] ^ rc_24[rnd]
+        self.state.register[0] = self.state.register[0] ^ rc_24[rnd]
 
     def _rounds(self):
         for x in range(24):
@@ -176,6 +146,7 @@ class Keccak:
         self._rounds()
 
     def hash(self, input: io.BytesIO, in_len, security=256):
+        for x in range(200): self.state.buffer[x] = 0x0
         reader = io.BufferedReader(input)
         buffer = reader.read(self.RATE)
         while len(buffer) > self.RATE:
